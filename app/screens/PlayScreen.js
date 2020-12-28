@@ -15,16 +15,15 @@ import color from "../utilities/color";
 
 function PlayScreen({ id, title, artist, img, list }) {
   const [effect, setEffect] = useState({
-    isRepPress: false,
-    repClr: color.light1,
+    isButtonPress: "rep", //initially repeat is on
+    repClr: color.primary1,
     isPlayPress: false,
     playIcon: "pause-circle",
     playClr: color.primary1,
-    isShufflePress: false,
     shuffleClr: color.light1,
   });
   const [volume, setVolume] = useState({
-    isVolPress: "on",
+    isVolPress: "on", // initially volume is high
     off: color.light1,
     on: color.primary3,
   });
@@ -39,22 +38,26 @@ function PlayScreen({ id, title, artist, img, list }) {
     sliderValue: 0,
     duration: 0,
     currentTime: 0,
+    songTime: 0,
   });
+  const [reLoading, setReLoading] = useState(); // it takes current time of music and pass to loading
 
-  const handleRepeat = () => {
-    effect.isRepPress === false
+  const handleRepeatShuffle = () => {
+    effect.isButtonPress === "rep"
       ? setEffect((prevState) => {
           return {
             ...prevState,
-            isRepPress: true,
-            repClr: color.primary1,
+            isButtonPress: "shuffle",
+            repClr: color.light1,
+            shuffleClr: color.primary1,
           };
         })
       : setEffect((prevState) => {
           return {
             ...prevState,
-            isRepPress: false,
-            repClr: color.light1,
+            isButtonPress: "rep",
+            repClr: color.primary1,
+            shuffleClr: color.light1,
           };
         });
   };
@@ -62,7 +65,16 @@ function PlayScreen({ id, title, artist, img, list }) {
     let { playbackInstance, currentIndex } = state;
     if (playbackInstance) {
       await playbackInstance.unloadAsync();
-      currentIndex < list.length - 1 ? (currentIndex -= 1) : (currentIndex = 0);
+      list !== undefined
+        ? currentIndex <= list.length
+          ? (currentIndex -= 1)
+          : (currentIndex = 1)
+        : loadAudio();
+      currentIndex <= 0 ? (currentIndex = list.length + currentIndex) : null;
+      await setSongStatus((currState) => ({
+        ...currState,
+        currentTime: 0,
+      }));
       setState((currState) => ({
         ...currState,
         currentIndex,
@@ -70,7 +82,7 @@ function PlayScreen({ id, title, artist, img, list }) {
     }
   };
 
-  const PlayPauseHandler = async () => {
+  const handlePlayPause = async () => {
     const { isPlaying, playbackInstance } = state;
     isPlaying
       ? await playbackInstance.pauseAsync()
@@ -93,35 +105,39 @@ function PlayScreen({ id, title, artist, img, list }) {
       isPlaying: !isPlaying,
     }));
   };
+
   const handleForward = async () => {
     let { playbackInstance, currentIndex } = state;
     if (playbackInstance) {
       await playbackInstance.unloadAsync();
-      currentIndex < list.length - 1 ? (currentIndex += 1) : (currentIndex = 0);
+      list !== undefined
+        ? currentIndex < list.length
+          ? (currentIndex += 1)
+          : (currentIndex = 1)
+        : loadAudio();
+      await setSongStatus((currState) => ({
+        ...currState,
+        currentTime: 0,
+      }));
       setState((currState) => ({
         ...currState,
         currentIndex,
       }));
     }
   };
-  const handleShuffle = () => {
-    effect.isShufflePress === false
-      ? setEffect((prevState) => ({
-          ...prevState,
-          isShufflePress: true,
-          shuffleClr: color.primary1,
-        }))
-      : setEffect((prevState) => ({
-          ...prevState,
-          isShufflePress: false,
-          shuffleClr: color.light1,
-        }));
-  };
-  const handleVolume = () => {
+
+  const handleVolume = async () => {
+    let { playbackInstance } = state;
+    await playbackInstance.unloadAsync();
     volume.isVolPress === "on"
       ? setVolume({ isVolPress: "off", off: color.primary3, on: color.light1 })
       : setVolume({ isVolPress: "on", off: color.light1, on: color.primary3 });
+    volume.isVolPress === "off" // isVolPressed is still on
+      ? setState((currState) => ({ ...currState, volume: 1.0 }))
+      : setState((currState) => ({ ...currState, volume: 0.0 }));
+    setReLoading(songStatus.currentTime);
   };
+
   const timeStructure = (e) => {
     let ms = parseInt((e % 1000) / 100),
       ss = Math.floor((e / 1000) % 60),
@@ -153,29 +169,35 @@ function PlayScreen({ id, title, artist, img, list }) {
       }
     };
     loadData();
-  }, [state.currentIndex]);
+  }, [state.currentIndex, reLoading]);
+
   const loadAudio = async () => {
-    const { isPlaying, volume } = state;
+    const { isPlaying, volume, playbackInstance } = state;
+    if (playbackInstance != null) {
+      await playbackInstance.unloadAsync();
+      playbackInstance.setOnPlaybackStatusUpdate(null);
+      setState((currState) => ({ ...currState, playbackInstance: null }));
+    }
     try {
       const playbackInstance = new Audio.Sound();
       let currSong = 0;
       list === undefined
-        ? (currSong = require("../assets/tracks/Ae_Dil_Hai_Mushkil.mp3"))
+        ? (currSong = require("../assets/tracks/Hold_me_Close.mp3"))
         : (currSong = list[state.currentIndex - 1].uri);
       const source = currSong;
       const status = {
-        positionMillis: 0,
+        positionMillis: songStatus.currentTime,
         shouldPlay: isPlaying,
         volume: volume,
       };
       await playbackInstance.unloadAsync();
       playbackInstance.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
       const track = await playbackInstance.loadAsync(source, status, false);
-      console.log("Durration:", timeStructure(track.durationMillis));
       const endTime = timeStructure(track.durationMillis);
       setSongStatus((currState) => ({
         ...currState,
         duration: endTime,
+        songTime: track.durationMillis,
       }));
       setState((curState) => ({
         ...curState,
@@ -185,8 +207,8 @@ function PlayScreen({ id, title, artist, img, list }) {
       console.log(e);
     }
   };
+
   const onPlaybackStatusUpdate = (status) => {
-    //console.log(status);
     setState((curState) => ({
       ...curState,
       isBuffering: status.isBuffering,
@@ -198,7 +220,28 @@ function PlayScreen({ id, title, artist, img, list }) {
           currentTime: status.positionMillis,
         }))
       : null;
+    if (status.didJustFinish) {
+      state.playbackInstance.unloadAsync();
+    }
   };
+
+  const handleProgressBar = async (e) => {
+    let { playbackInstance } = state;
+    await playbackInstance.unloadAsync();
+    setSongStatus((currState) => ({
+      ...currState,
+      currentTime: e * songStatus.songTime,
+    }));
+    setReLoading(e);
+  };
+  if (state.playbackInstance !== null)
+    effect.isButtonPress === "shuffle"
+      ? songStatus.currentTime === songStatus.songTime
+        ? handleForward()
+        : null
+      : songStatus.currentTime === songStatus.songTime
+      ? state.playbackInstance.replayAsync()
+      : null;
 
   if (title !== undefined) {
     let { currentIndex } = state;
@@ -237,11 +280,11 @@ function PlayScreen({ id, title, artist, img, list }) {
           </View>
           <View style={styles.detailCont}>
             <AppText style={styles.songName} numberOfLines={1}>
-              {title ? title : "Ae Dil Hai Mushkil"}
+              {title ? title : "Hold me Close"}
             </AppText>
             <View style={styles.artistCont}>
               <AppText style={styles.artist} numberOfLines={1}>
-                {artist ? artist : "Arjit singh"}
+                {artist ? artist : "Ella Henderson, Sam Feldt"}
               </AppText>
             </View>
           </View>
@@ -250,7 +293,7 @@ function PlayScreen({ id, title, artist, img, list }) {
               iconName="twitter-retweet"
               iconColor={effect.repClr}
               size={30}
-              onPress={handleRepeat}
+              onPress={handleRepeatShuffle}
             />
             <IconBtn
               iconName="skip-backward"
@@ -261,7 +304,7 @@ function PlayScreen({ id, title, artist, img, list }) {
               iconName={effect.playIcon}
               iconColor={effect.playClr}
               size={70}
-              onPress={PlayPauseHandler}
+              onPress={handlePlayPause}
             />
             <IconBtn
               iconName="skip-forward"
@@ -272,7 +315,7 @@ function PlayScreen({ id, title, artist, img, list }) {
               iconName="shuffle"
               iconColor={effect.shuffleClr}
               size={30}
-              onPress={handleShuffle}
+              onPress={handleRepeatShuffle}
             />
           </View>
           <View style={styles.songStatus}>
@@ -296,6 +339,9 @@ function PlayScreen({ id, title, artist, img, list }) {
                 maximumValue={1}
                 value={songStatus.sliderValue}
                 thumbTintColor={color.white}
+                onSlidingComplete={(val) => {
+                  handleProgressBar(val);
+                }}
               />
             </View>
             <IconBtn

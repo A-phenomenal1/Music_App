@@ -50,6 +50,7 @@ function FavouritesScreen({ fav, recent, callback5 }) {
               onPress={() => {
                 handleRecent(item), callback5(item, favSong);
               }}
+              img={item.imgUrl}
               title={item.title}
               initialHeart="heart-minus"
               callback={handleFav}

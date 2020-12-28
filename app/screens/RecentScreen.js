@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Text, Image, FlatList } from "react-native";
-import color from "../utilities/color";
+
 import Listing from "../components/Listing";
 
 function RecentScreen({ fav, recent, callback4 }) {
@@ -43,6 +43,7 @@ function RecentScreen({ fav, recent, callback4 }) {
               title={item.title}
               artist={item.artist}
               id={item.id}
+              img={item.imgUrl}
               onPress={() => {
                 callback4(item, recentSong);
               }}

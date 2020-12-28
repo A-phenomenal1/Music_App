@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FlatList } from "react-native";
+// import * as MediaLibrary from "expo-media-library";
 
 import Listing from "../components/Listing";
 
@@ -83,6 +84,7 @@ function PlayListScreen({ callback1, callback2, callback3 }) {
       uri: require("../assets/tracks/Alone.mp3"),
     },
   ];
+  // const [playList, setPlayList] = useState([]);
 
   const [favourites, setFavourites] = useState([]);
   const [recents, setRecents] = useState([]);
@@ -118,7 +120,7 @@ function PlayListScreen({ callback1, callback2, callback3 }) {
   };
 
   const handleRecent = (item) => {
-    if (!recents.some((r) => r.id === id)) {
+    if (!recents.some((r) => r.id === item.id)) {
       recents.push({
         id: item.id,
         title: item.title,
@@ -129,11 +131,34 @@ function PlayListScreen({ callback1, callback2, callback3 }) {
     }
   };
 
+  // console.log("playList: ", playList);
+
   useEffect(() => {
     callback1(favourites);
     callback2(recents);
   }, [favourites, recents]);
-
+  // --------------------------------For Local Media file--------------------------------
+  // useEffect(() => {
+  //   const PlayFetchedDataHandler = async () => {
+  //     try {
+  //       let { status } = await MediaLibrary.requestPermissionsAsync();
+  //       if (status === "granted") {
+  //         let media = await MediaLibrary.getAssetsAsync({
+  //           mediaType: ["audio"],
+  //         });
+  //         for (let i = 0; i < 10; i++) {
+  //           playList.push(media.assets[i]);
+  //         }
+  //         setPlayList(playList);
+  //         // console.log("data: ", media.assets.length);
+  //       }
+  //     } catch (error) {
+  //       console.log("error in loading", error);
+  //     }
+  //   };
+  //   PlayFetchedDataHandler();
+  // }, [playList1]);
+  // ---------------------------------------------------------------------------
   return (
     <FlatList
       data={playList}

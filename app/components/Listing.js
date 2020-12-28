@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import color from "../utilities/color";
@@ -22,8 +22,8 @@ function Listing({
     <TouchableOpacity underlay={color.light} onPress={onPress}>
       <View style={styles.container}>
         <View style={styles.icon}>
-          {image ? (
-            <Image source={image} />
+          {img ? (
+            <Image source={{ uri: img }} style={{ width: 55, height: 55 }} />
           ) : (
             <MaterialCommunityIcons name="music" size={25} />
           )}

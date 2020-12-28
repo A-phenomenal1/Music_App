@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Modal } from "react-native";
 import Constants from "expo-constants";
+
 import HeadBar from "../components/HeadBar";
 import PlayListScreen from "../screens/PlayListScreen";
 import RecentScreen from "../screens/RecentScreen";
